@@ -1,5 +1,6 @@
 import { readConfig, setUser } from "./config";
 import { createUser, deleteAllUsers, getUserByName, getUsers } from "./lib/db/queries/users";
+import { fetchFeed } from "./lib/rss";
 
 type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
 export type CommandsRegistry = Record<string, CommandHandler>;
@@ -49,6 +50,10 @@ export async function handlerUsers() {
     for (const user of users) {
         console.log(`* ${user.name}${user.name === currentUser ? " (current)" : ""}`);
     }
+}
+export async function handlerAgg() {
+    const result = await fetchFeed("https://www.wagslane.dev/index.xml");
+    console.log(JSON.stringify(result, null, 2));
 }
 
 export function registerCommand(registry: CommandsRegistry, cmdName: string, handler: CommandHandler) {
