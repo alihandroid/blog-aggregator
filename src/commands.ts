@@ -7,6 +7,12 @@ import { fetchFeed } from "./lib/rss";
 type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
 export type CommandsRegistry = Record<string, CommandHandler>;
 
+type UserCommandHandler = (
+    cmdName: string,
+    user: User,
+    ...args: string[]
+) => Promise<void>;
+
 export async function handlerLogin(cmdName: string, ...args: string[]) {
     if (args.length === 0) {
         throw new Error("login expects a single argument, the username");
@@ -67,20 +73,13 @@ function printFeed(feed: Feed, user: User) {
     console.log(`- User:       ${user.name}`);
 }
 
-export async function handlerAddFeed(cmdName: string, name: string, url: string) {
+export async function handlerAddFeed(cmdName: string, user: User, name: string, url: string) {
     if (!name) {
         throw new Error("name argument must be present");
     }
 
     if (!url) {
         throw new Error("url argument must be present");
-    }
-
-    const currentUser = readConfig().currentUserName;
-    const user = await getUserByName(currentUser);
-
-    if (!user) {
-        throw new Error(`User ${currentUser} does not exist`);
     }
 
     const feed = await createFeed(name, url, user.id);
@@ -96,32 +95,18 @@ export async function handlerFeeds() {
     }
 }
 
-export async function handlerFollow(cmdName: string, url: string) {
+export async function handlerFollow(cmdName: string, user: User, url: string) {
     const feed = await getFeedByURL(url);
 
     if (!feed) {
         throw new Error(`Feed with URL ${url} does not exist`);
     }
 
-    const currentUser = readConfig().currentUserName;
-    const user = await getUserByName(currentUser);
-
-    if (!user) {
-        throw new Error(`User ${currentUser} does not exist`);
-    }
-
     await createFeedFollow(user.id, feed.id);
     printFeed(feed, user);
 }
 
-export async function handlerFollowing(cmdName: string) {
-    const currentUser = readConfig().currentUserName;
-    const user = await getUserByName(currentUser);
-
-    if (!user) {
-        throw new Error(`User ${currentUser} does not exist`);
-    }
-
+export async function handlerFollowing(cmdName: string, user: User) {
     const followedFeeds = await getFeedFollowsForUser(user.id);
 
     for (const followedFeed of followedFeeds) {
@@ -140,4 +125,17 @@ export async function runCommand(registry: CommandsRegistry, cmdName: string, ..
     }
 
     await handler(cmdName, ...args);
+}
+
+export function middlewareLoggedIn(handler: UserCommandHandler): CommandHandler {
+    return async (cmdName, ...args) => {
+        const currentUser = readConfig().currentUserName;
+        const user = await getUserByName(currentUser);
+
+        if (!user) {
+            throw new Error(`User ${currentUser} does not exist`);
+        }
+
+        await handler(cmdName, user, ...args);
+    };
 }
