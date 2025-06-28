@@ -1,3 +1,4 @@
+import { relations } from "drizzle-orm";
 import { pgTable, timestamp, uuid, text } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -21,3 +22,10 @@ export const feeds = pgTable("feeds", {
     url: text("url").notNull(),
     user_id: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull()
 })
+
+export const feedsRelations = relations(feeds, ({ one }) => ({
+    user: one(users, {
+        fields: [feeds.user_id],
+        references: [users.id]
+    }),
+}));

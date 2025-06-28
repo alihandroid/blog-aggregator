@@ -1,5 +1,5 @@
 import { readConfig, setUser } from "./config";
-import { createFeed, Feed } from "./lib/db/queries/feeds";
+import { createFeed, Feed, getFeedsWithUsers } from "./lib/db/queries/feeds";
 import { createUser, deleteAllUsers, getUserByName, getUsers, User } from "./lib/db/queries/users";
 import { fetchFeed } from "./lib/rss";
 
@@ -58,7 +58,6 @@ export async function handlerAgg() {
     console.log(JSON.stringify(result, null, 2));
 }
 
-
 function printFeed(feed: Feed, user: User) {
     console.log(`- ID:         ${feed.id}`);
     console.log(`- Created At: ${feed.createdAt}`);
@@ -86,6 +85,14 @@ export async function handlerAddFeed(cmdName: string, name: string, url: string)
 
     const feed = await createFeed(name, url, user.id);
     printFeed(feed, user);
+}
+
+export async function handlerFeeds() {
+    const feeds = await getFeedsWithUsers();
+    for (const feed of feeds) {
+        printFeed(feed, feed.user);
+        console.log("-".repeat(70));
+    }
 }
 
 export function registerCommand(registry: CommandsRegistry, cmdName: string, handler: CommandHandler) {
