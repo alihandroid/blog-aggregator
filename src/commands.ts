@@ -1,5 +1,6 @@
 import { readConfig, setUser } from "./config";
-import { createFeed, Feed, getFeedsWithUsers } from "./lib/db/queries/feeds";
+import { createFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feedFollows";
+import { createFeed, Feed, getFeedByURL, getFeedsWithUsers } from "./lib/db/queries/feeds";
 import { createUser, deleteAllUsers, getUserByName, getUsers, User } from "./lib/db/queries/users";
 import { fetchFeed } from "./lib/rss";
 
@@ -37,7 +38,6 @@ export async function handlerRegister(cmdName: string, ...args: string[]) {
 
     setUser(username);
     console.log(`Created user ${username}`);
-    console.log(user);
 }
 
 export async function handlerReset() {
@@ -84,6 +84,7 @@ export async function handlerAddFeed(cmdName: string, name: string, url: string)
     }
 
     const feed = await createFeed(name, url, user.id);
+    await createFeedFollow(user.id, feed.id);
     printFeed(feed, user);
 }
 
@@ -92,6 +93,39 @@ export async function handlerFeeds() {
     for (const feed of feeds) {
         printFeed(feed, feed.user);
         console.log("-".repeat(70));
+    }
+}
+
+export async function handlerFollow(cmdName: string, url: string) {
+    const feed = await getFeedByURL(url);
+
+    if (!feed) {
+        throw new Error(`Feed with URL ${url} does not exist`);
+    }
+
+    const currentUser = readConfig().currentUserName;
+    const user = await getUserByName(currentUser);
+
+    if (!user) {
+        throw new Error(`User ${currentUser} does not exist`);
+    }
+
+    await createFeedFollow(user.id, feed.id);
+    printFeed(feed, user);
+}
+
+export async function handlerFollowing(cmdName: string) {
+    const currentUser = readConfig().currentUserName;
+    const user = await getUserByName(currentUser);
+
+    if (!user) {
+        throw new Error(`User ${currentUser} does not exist`);
+    }
+
+    const followedFeeds = await getFeedFollowsForUser(user.id);
+
+    for (const followedFeed of followedFeeds) {
+        console.log(`- ${followedFeed.feed.name}`);
     }
 }
 
