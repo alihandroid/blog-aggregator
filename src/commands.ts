@@ -1,5 +1,5 @@
 import { readConfig, setUser } from "./config";
-import { createFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feedFollows";
+import { createFeedFollow, deleteFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feedFollows";
 import { createFeed, Feed, getFeedByURL, getFeedsWithUsers } from "./lib/db/queries/feeds";
 import { createUser, deleteAllUsers, getUserByName, getUsers, User } from "./lib/db/queries/users";
 import { fetchFeed } from "./lib/rss";
@@ -112,6 +112,17 @@ export async function handlerFollowing(cmdName: string, user: User) {
     for (const followedFeed of followedFeeds) {
         console.log(`- ${followedFeed.feed.name}`);
     }
+}
+
+export async function handlerUnfollow(cmdName: string, user: User, url: string) {
+    const feed = await getFeedByURL(url);
+
+    if (!feed) {
+        throw new Error(`Feed with URL ${url} does not exist`);
+    }
+
+    await deleteFeedFollow(user.id, feed.id);
+    console.log(`${user.name} stopped following ${url}`);
 }
 
 export function registerCommand(registry: CommandsRegistry, cmdName: string, handler: CommandHandler) {

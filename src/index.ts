@@ -1,4 +1,4 @@
-import { CommandsRegistry, handlerAddFeed, handlerAgg, handlerFeeds, handlerFollow, handlerFollowing, handlerLogin, handlerRegister, handlerReset, handlerUsers, middlewareLoggedIn, registerCommand, runCommand } from "./commands";
+import { CommandsRegistry, handlerAddFeed, handlerAgg, handlerFeeds, handlerFollow, handlerFollowing, handlerLogin, handlerRegister, handlerReset, handlerUnfollow, handlerUsers, middlewareLoggedIn, registerCommand, runCommand } from "./commands";
 
 async function main() {
     const registry: CommandsRegistry = {};
@@ -11,6 +11,7 @@ async function main() {
     registerCommand(registry, "feeds", handlerFeeds);
     registerCommand(registry, "follow", middlewareLoggedIn(handlerFollow));
     registerCommand(registry, "following", middlewareLoggedIn(handlerFollowing));
+    registerCommand(registry, "unfollow", middlewareLoggedIn(handlerUnfollow));
 
     const argv = process.argv.slice(2);
 

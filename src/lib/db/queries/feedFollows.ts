@@ -12,3 +12,7 @@ export async function getFeedFollowsForUser(user_id: string) {
     const result = await db.query.feedFollows.findMany({ where: eq(feedFollows.user_id, user_id), with: { feed: true } });
     return result;
 }
+
+export async function deleteFeedFollow(user_id: string, feed_id: string) {
+    await db.delete(feedFollows).where(and(eq(feedFollows.user_id, user_id), eq(feedFollows.feed_id, feed_id)));
+}
