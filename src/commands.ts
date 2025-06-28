@@ -1,5 +1,6 @@
 import { readConfig, setUser } from "./config";
-import { createUser, deleteAllUsers, getUserByName, getUsers } from "./lib/db/queries/users";
+import { createFeed, Feed } from "./lib/db/queries/feeds";
+import { createUser, deleteAllUsers, getUserByName, getUsers, User } from "./lib/db/queries/users";
 import { fetchFeed } from "./lib/rss";
 
 type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
@@ -51,9 +52,40 @@ export async function handlerUsers() {
         console.log(`* ${user.name}${user.name === currentUser ? " (current)" : ""}`);
     }
 }
+
 export async function handlerAgg() {
     const result = await fetchFeed("https://www.wagslane.dev/index.xml");
     console.log(JSON.stringify(result, null, 2));
+}
+
+
+function printFeed(feed: Feed, user: User) {
+    console.log(`- ID:         ${feed.id}`);
+    console.log(`- Created At: ${feed.createdAt}`);
+    console.log(`- Updated At: ${feed.updatedAt}`);
+    console.log(`- Name:       ${feed.name}`);
+    console.log(`- URL:        ${feed.url}`);
+    console.log(`- User:       ${user.name}`);
+}
+
+export async function handlerAddFeed(cmdName: string, name: string, url: string) {
+    if (!name) {
+        throw new Error("name argument must be present");
+    }
+
+    if (!url) {
+        throw new Error("url argument must be present");
+    }
+
+    const currentUser = readConfig().currentUserName;
+    const user = await getUserByName(currentUser);
+
+    if (!user) {
+        throw new Error(`User ${currentUser} does not exist`);
+    }
+
+    const feed = await createFeed(name, url, user.id);
+    printFeed(feed, user);
 }
 
 export function registerCommand(registry: CommandsRegistry, cmdName: string, handler: CommandHandler) {
