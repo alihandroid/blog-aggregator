@@ -1,11 +1,11 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "..";
 import { feeds } from "../schema";
 
 export type Feed = typeof feeds.$inferSelect;
 
-export async function createFeed(name: string, url: string, user_id: string) {
-    const [result] = await db.insert(feeds).values({ name, url, user_id }).returning();
+export async function createFeed(name: string, url: string, userId: string) {
+    const [result] = await db.insert(feeds).values({ name, url, userId: userId }).returning();
     return result;
 }
 
@@ -21,10 +21,10 @@ export async function getFeedByURL(url: string) {
 
 export async function markFeedFetched(id: string) {
     const now = new Date();
-    await db.update(feeds).set({ last_fetched_at: now, updatedAt: now }).where(eq(feeds.id, id));
+    await db.update(feeds).set({ lastFetchedAt: now }).where(eq(feeds.id, id));
 }
 
 export async function getNextFeedToFetch() {
-    const result = await db.query.feeds.findFirst({ orderBy: [sql`${feeds.last_fetched_at} nulls first`] });
+    const result = await db.query.feeds.findFirst({ orderBy: [sql`${feeds.lastFetchedAt} nulls first`] });
     return result;
 }

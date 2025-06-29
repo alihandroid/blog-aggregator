@@ -1,8 +1,10 @@
+import { userInfo } from "os";
 import { readConfig, setUser } from "./config";
 import { createFeedFollow, deleteFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feedFollows";
 import { createFeed, Feed, getFeedByURL, getFeedsWithUsers } from "./lib/db/queries/feeds";
+import { getPostsForUser } from "./lib/db/queries/posts";
 import { createUser, deleteAllUsers, getUserByName, getUsers, User } from "./lib/db/queries/users";
-import { fetchFeed, scrapeFeeds } from "./lib/rss";
+import { scrapeFeeds } from "./lib/rss";
 
 type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
 export type CommandsRegistry = Record<string, CommandHandler>;
@@ -90,6 +92,10 @@ function parseDuration(durationStr: string) {
 }
 
 export async function handlerAgg(cmdName: string, timeBetweenReqs: string) {
+    if (!timeBetweenReqs) {
+        throw new Error("timeBetweenReqs is missing");
+    }
+
     function handleError(reason: any) {
         console.log(reason);
         process.exit(1);
@@ -120,7 +126,7 @@ function printFeed(feed: Feed, user: User) {
     console.log(`- Name:       ${feed.name}`);
     console.log(`- URL:        ${feed.url}`);
     console.log(`- User:       ${user.name}`);
-    console.log(`- Last Fetched At: ${feed.last_fetched_at}`);
+    console.log(`- Last Fetched At: ${feed.lastFetchedAt}`);
 }
 
 export async function handlerAddFeed(cmdName: string, user: User, name: string, url: string) {
@@ -173,6 +179,19 @@ export async function handlerUnfollow(cmdName: string, user: User, url: string) 
 
     await deleteFeedFollow(user.id, feed.id);
     console.log(`${user.name} stopped following ${url}`);
+}
+
+export async function handlerBrowse(cmdName: string, user: User, limitStr: string) {
+    const limit = limitStr ? parseInt(limitStr) : 2;
+
+    const posts = await getPostsForUser(user.id, limit);
+    for (const post of posts) {
+        console.log(post.title);
+        console.log(post.url);
+        console.log(post.publishedAt?.toLocaleString() ?? "Publish date unknown");
+        console.log(post.description);
+        console.log("-".repeat(70));
+    }
 }
 
 export function registerCommand(registry: CommandsRegistry, cmdName: string, handler: CommandHandler) {
