@@ -2,7 +2,7 @@ import { readConfig, setUser } from "./config";
 import { createFeedFollow, deleteFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feedFollows";
 import { createFeed, Feed, getFeedByURL, getFeedsWithUsers } from "./lib/db/queries/feeds";
 import { createUser, deleteAllUsers, getUserByName, getUsers, User } from "./lib/db/queries/users";
-import { fetchFeed } from "./lib/rss";
+import { fetchFeed, scrapeFeeds } from "./lib/rss";
 
 type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
 export type CommandsRegistry = Record<string, CommandHandler>;
@@ -59,9 +59,58 @@ export async function handlerUsers() {
     }
 }
 
-export async function handlerAgg() {
-    const result = await fetchFeed("https://www.wagslane.dev/index.xml");
-    console.log(JSON.stringify(result, null, 2));
+function parseDuration(durationStr: string) {
+    const regex = /^(\d+)(ms|s|m|h)$/;
+    const match = durationStr.match(regex);
+
+    if (!match) {
+        throw new Error("Malformed duration string");
+    }
+
+    let duration = parseInt(match[1])
+    const suffix = match[2];
+
+    switch (suffix) {
+        case "ms":
+            break;
+        case "s":
+            duration *= 1000;
+            break;
+        case "m":
+            duration *= 1000 * 60;
+            break;
+        case "h":
+            duration *= 1000 * 60 * 60;
+            break;
+        default:
+            throw new Error("Unsupported time format");
+    }
+
+    return duration;
+}
+
+export async function handlerAgg(cmdName: string, timeBetweenReqs: string) {
+    function handleError(reason: any) {
+        console.log(reason);
+        process.exit(1);
+    }
+
+    const requestIntervalMillis = parseDuration(timeBetweenReqs);
+    scrapeFeeds().catch(handleError);
+
+    console.log(`Collecting feeds every ${timeBetweenReqs}`)
+
+    const interval = setInterval(() => {
+        scrapeFeeds().catch(handleError);
+    }, requestIntervalMillis);
+
+    await new Promise<void>((resolve) => {
+        process.on("SIGINT", () => {
+            console.log("Shutting down feed aggregator...");
+            clearInterval(interval);
+            resolve();
+        });
+    });
 }
 
 function printFeed(feed: Feed, user: User) {
@@ -71,6 +120,7 @@ function printFeed(feed: Feed, user: User) {
     console.log(`- Name:       ${feed.name}`);
     console.log(`- URL:        ${feed.url}`);
     console.log(`- User:       ${user.name}`);
+    console.log(`- Last Fetched At: ${feed.last_fetched_at}`);
 }
 
 export async function handlerAddFeed(cmdName: string, user: User, name: string, url: string) {

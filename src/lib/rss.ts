@@ -1,5 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
-import { title } from "process";
+import { getNextFeedToFetch, markFeedFetched } from "./db/queries/feeds";
 
 export type RSSFeed = {
     channel: {
@@ -73,4 +73,19 @@ export async function fetchFeed(feedURL: string) {
     }
 
     return result;
+}
+
+export async function scrapeFeeds() {
+    const nextFeed = await getNextFeedToFetch();
+    if (!nextFeed) {
+        throw new Error("Cannot find a feed to fetch");
+    }
+
+    await markFeedFetched(nextFeed.id);
+
+    const rss = await fetchFeed(nextFeed.url);
+
+    for (const item of rss.channel.item) {
+        console.log(item.title);
+    }
 }
